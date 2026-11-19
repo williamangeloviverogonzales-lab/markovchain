@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markov Next-Word Predictor</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-light: #e0e7ff;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    main {
+      width: 100%;
+      max-width: 820px;
+    }
+
+    header {
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .label-title {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    select,
+    input[type="text"] {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid #cbd5e1;
+      font-size: 0.95rem;
+      background: #fff;
+      color: var(--text);
+    }
+
+    select {
+      background: #f8fafc;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .order-btn {
+      flex: 1;
+      padding: 0.55rem 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .order-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: #f1f5f9;
+      padding: 0.6rem 0.85rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .stats strong {
+      color: var(--text);
+    }
+
+    .meta-row {
+      margin-top: 0.65rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    code {
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+    }
+
+    .quick-words {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
+    .chip {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .chip:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th {
+      text-align: left;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 0.6rem;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    .word-btn {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: none;
+      border-radius: 0.35rem;
+      padding: 0.25rem 0.55rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.88rem;
+    }
+
+    .word-btn:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .bar-wrap {
+      width: 140px;
+      height: 9px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 999px;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .notice {
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      color: #92400e;
+      background: #fef3c7;
+      padding: 0.45rem 0.7rem;
+      border-radius: 0.4rem;
+      display: none;
+    }
+
+    .gen-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .gen-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .gen-select {
+      width: auto;
+      padding: 0.45rem 0.65rem;
+      font-size: 0.85rem;
+    }
+
+    .gen-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .gen-btn:hover {
+      opacity: 0.92;
+    }
+
+    .gen-output {
+      display: none;
+      margin-top: 0.85rem;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem 0.9rem;
+    }
+
+    .gen-text {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .gen-meta {
+      margin-top: 0.35rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Markov Next-Word Predictor</h1>
+      <p>Type a word (or 1–3 words) to see candidate next words, conditional probabilities, and generated sequences.</p>
+    </header>
+
+    <section class="card controls">
+      <div>
+        <label class="label-title" for="corpusSelect">Corpus (.txt)</label>
+        <select id="corpusSelect">
+          <option value="corpora/preamble.txt">PH Preamble (Short)</option>
+          <option value="corpora/taylor_swift.txt">Taylor Swift Lyrics</option>
+          <option value="corpora/sherlock.txt">Sherlock Holmes</option>
+          <option value="corpora/bible.txt">The Bible</option>
+        </select>
+        <div class="notice" id="fallbackNotice"></div>
+      </div>
+
+      <div>
+        <span class="label-title">Context Words (Markov Order)</span>
+        <div class="btn-group" id="orderGroup">
+          <button type="button" class="order-btn active" data-order="1">1 Word</button>
+          <button type="button" class="order-btn" data-order="2">2 Words</button>
+          <button type="button" class="order-btn" data-order="3">3 Words</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="stats">
+      <span>Tokens: <strong id="statTokens">0</strong></span>
+      <span>Vocabulary: <strong id="statVocab">0</strong></span>
+      <span>Unique States: <strong id="statStates">0</strong></span>
+      <span>Corpus Source: <strong id="statSource">Loading...</strong></span>
+    </div>
+
+    <section class="card">
+      <label class="label-title" for="wordInput">Enter a Word or Phrase</label>
+      <input
+        type="text"
+        id="wordInput"
+        value="mathematics"
+        placeholder="Type a word here, e.g., mathematics..."
+        autocomplete="off"
+      />
+
+      <div class="meta-row">
+        <div>
+          Active <span id="orderLabel">1</span>-word state: <code id="stateCode">mathematics</code>
+        </div>
+        <div class="quick-words" id="quickWords">
+          <span>Try:</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h2 style="font-size: 1rem; font-weight: 600;">Candidate Next Words & Probabilities</h2>
+        <span id="transitionSummary" class="status"></span>
+      </div>
+      <div id="resultsContainer"></div>
+    </section>
+
+    <section class="card">
+      <div class="gen-header">
+        <h2 style="font-size: 1rem; font-weight: 600;">Construct a Sequence from the Chain</h2>
+        <div class="gen-controls">
+          <select id="genMode" class="gen-select">
+            <option value="sample">Random Sampling</option>
+            <option value="greedy">Greedy (Top-1)</option>
+          </select>
+
+          <select id="genLength" class="gen-select">
+            <option value="8">8 words</option>
+            <option value="12" selected>12 words</option>
+            <option value="20">20 words</option>
+          </select>
+
+          <button type="button" id="generateBtn" class="gen-btn">Generate</button>
+        </div>
+      </div>
+
+      <div id="generatedOutput" class="gen-output">
+        <p id="generatedText" class="gen-text"></p>
+        <p id="generatedMeta" class="gen-meta"></p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const FALLBACK_CORPUS = `
+      Mathematics is a journey of discovery. Every problem in mathematics
+      is a puzzle waiting to be solved. A good puzzle requires thinking,
+      and clear thinking leads to deep understanding. When you practice
+      mathematics, every step builds confidence, and confidence opens
+      new paths of discovery.
+    `;
+
+    const SEP = "\u0000";
+    let currentOrder = 1;
+    let transitions = new Map();
+    let sampleWords = ["mathematics", "is", "a", "puzzle", "thinking", "discovery"];
+
+    const corpusSelect = document.getElementById("corpusSelect");
+    const orderGroup = document.getElementById("orderGroup");
+    const wordInput = document.getElementById("wordInput");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const stateCode = document.getElementById("stateCode");
+    const orderLabel = document.getElementById("orderLabel");
+    const transitionSummary = document.getElementById("transitionSummary");
+    const statTokens = document.getElementById("statTokens");
+    const statVocab = document.getElementById("statVocab");
+    const statStates = document.getElementById("statStates");
+    const statSource = document.getElementById("statSource");
+    const fallbackNotice = document.getElementById("fallbackNotice");
+    const quickWordsContainer = document.getElementById("quickWords");
+
+    const genModeSelect = document.getElementById("genMode");
+    const genLengthSelect = document.getElementById("genLength");
+    const generateBtn = document.getElementById("generateBtn");
+    const generatedOutput = document.getElementById("generatedOutput");
+    const generatedText = document.getElementById("generatedText");
+    const generatedMeta = document.getElementById("generatedMeta");
+
+    function tokenize(text) {
+      return text.toLowerCase().match(/\b[\w']+\b/g) || [];
+    }
+
+    function buildChain(text, order) {
+      const tokens = tokenize(text);
+      const vocabSet = new Set(tokens);
+      const map = new Map();
+
+      for (let i = 0; i <= tokens.length - order - 1; i++) {
+        const key = tokens.slice(i, i + order).join(SEP);
+        const nextWord = tokens[i + order];
+
+        let entry = map.get(key);
+        if (!entry) {
+          entry = { total: 0, nextCounts: new Map() };
+          map.set(key, entry);
+        }
+        entry.nextCounts.set(nextWord, (entry.nextCounts.get(nextWord) || 0) + 1);
+        entry.total += 1;
+      }
+
+      transitions = map;
+      statTokens.textContent = tokens.length.toLocaleString();
+      statVocab.textContent = vocabSet.size.toLocaleString();
+      statStates.textContent = map.size.toLocaleString();
+
+      const freq = new Map();
+      for (const t of tokens) freq.set(t, (freq.get(t) || 0) + 1);
+      const top = Array.from(freq.entries())
+        .filter(([w]) => w.length > 1)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([w]) => w);
+      if (top.length > 0) sampleWords = top;
+      renderQuickWords();
+    }
+
+    function renderQuickWords() {
+      quickWordsContainer.innerHTML = `<span>Try:</span>`;
+      sampleWords.forEach((word) => {
+        const btn = document.createElement("button");
+        btn.type="button";
+        btn.className = "chip";
+        btn.textContent = word;
+        btn.addEventListener("click", () => {
+          wordInput.value = word;
+          renderPredictions();
+        });
+        quickWordsContainer.appendChild(btn);
+      });
+    }
+
+    function getSortedCandidates(entry) {
+      return Array.from(entry.nextCounts.entries())
+        .map(([word, count]) => ({
+          word,
+          count,
+          prob: count / entry.total
+        }))
+        .sort((a, b) => b.prob - a.prob || a.word.localeCompare(b.word));
+    }
+
+    function pickNextWord(candidates, mode) {
+      if (mode === "greedy") {
+        return candidates[0].word;
+      }
+
+      const r = Math.random();
+      let cumulative = 0;
+      for (const item of candidates) {
+        cumulative += item.prob;
+        if (r <= cumulative) return item.word;
+      }
+      return candidates[candidates.length - 1].word;
+    }
+
+    function generateSequence(seedText, maxNewWords, mode) {
+      const seedTokens = tokenize(seedText);
+      if (seedTokens.length < currentOrder) {
+        return {
+          text: "",
+          meta: `Type at least ${currentOrder} starting word(s) in the input box first.`
+        };
+      }
+
+      const words = [...seedTokens];
+
+      for (let step = 0; step < maxNewWords; step++) {
+        const context = words.slice(-currentOrder);
+        const key = context.join(SEP);
+        const entry = transitions.get(key);
+
+        if (!entry || entry.total === 0) {
+          return {
+            text: words.join(" "),
+            meta: `Stopped early after ${step} new word(s): no transitions from "${context.join(" ")}".`
+          };
+        }
+
+        const candidates = getSortedCandidates(entry);
+        words.push(pickNextWord(candidates, mode));
+      }
+
+      return {
+        text: words.join(" "),
+        meta: `Generated ${maxNewWords} word(s) using ${mode === "greedy" ? "greedy (argmax)" : "random sampling"} with k = ${currentOrder}.`
+      };
+    }
+
+    function renderPredictions() {
+      orderLabel.textContent = String(currentOrder);
+      const tokens = tokenize(wordInput.value);
+      const context = tokens.slice(-currentOrder);
+
+      if (context.length < currentOrder) {
+        stateCode.textContent = "none";
+        transitionSummary.textContent = "";
+        resultsContainer.innerHTML = `<p class="status">Type at least ${currentOrder} word(s) to see next-word probabilities.</p>`;
+        return;
+      }
+
+      const key = context.join(SEP);
+      stateCode.textContent = context.join(", ");
+      const entry = transitions.get(key);
+
+      if (!entry || entry.total === 0) {
+        transitionSummary.textContent = "0 transitions";
+        resultsContainer.innerHTML = `<p class="status">No next words found after "<strong>${context.join(" ")}</strong>" in this corpus.</p>`;
+        return;
+      }
+
+      transitionSummary.textContent = `Total observed transitions: ${entry.total}`;
+
+      const rows = getSortedCandidates(entry);
+
+      const tableRows = rows
+        .map((r) => {
+          const pct = (r.prob * 100).toFixed(1);
+          const barWidth = Math.max(r.prob * 100, 3).toFixed(1);
+          return `
+            <tr>
+              <td><button type="button" class="word-btn" data-next="${r.word}">${r.word}</button></td>
+              <td>${r.count} / ${entry.total}</td>
+              <td><strong>${r.prob.toFixed(4)}</strong> (${pct}%)</td>
+              <td>
+                <div class="bar-wrap">
+                  <div class="bar-fill" style="width: ${barWidth}%;"></div>
+                </div>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      resultsContainer.innerHTML = `
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Next Word</th>
+                <th>Count</th>
+                <th>Probability</th>
+                <th>Distribution</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      `;
+
+      resultsContainer.querySelectorAll(".word-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const nextWord = btn.getAttribute("data-next");
+          const currentVal = wordInput.value.trim();
+          wordInput.value = currentVal ? `${currentVal} ${nextWord}` : nextWord;
+          renderPredictions();
+        });
+      });
+    }
+
+    async function loadCorpus(path) {
+      resultsContainer.innerHTML = `<p class="status">Loading corpus...</p>`;
+      fallbackNotice.style.display = "none";
+
+      try {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error("File not found");
+        const text = await res.text();
+        if (!text.trim()) throw new Error("File is empty");
+        statSource.textContent = path;
+        buildChain(text, currentOrder);
+        renderPredictions();
+      } catch (_err) {
+        statSource.textContent = "Built-in sample (fallback)";
+        fallbackNotice.textContent = `Could not load "${path}" yet—using built-in sample text so you can test right away.`;
+        fallbackNotice.style.display = "block";
+        buildChain(FALLBACK_CORPUS, currentOrder);
+        renderPredictions();
+      }
+    }
+
+    corpusSelect.addEventListener("change", (e) => {
+      loadCorpus(e.target.value);
+    });
+
+    orderGroup.querySelectorAll(".order-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        orderGroup.querySelectorAll(".order-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentOrder = Number(btn.dataset.order);
+        loadCorpus(corpusSelect.value);
+      });
+    });
+
+    wordInput.addEventListener("input", renderPredictions);
+
+    generateBtn.addEventListener("click", () => {
+      const maxNewWords = Number(genLengthSelect.value);
+      const mode = genModeSelect.value;
+      const result = generateSequence(wordInput.value, maxNewWords, mode);
+
+      generatedOutput.style.display = "block";
+      generatedText.textContent = result.text || "(No sequence generated)";
+      generatedMeta.textContent = result.meta;
+    });
+
+    loadCorpus(corpusSelect.value);
+  </script>
+</body>
+</html>
